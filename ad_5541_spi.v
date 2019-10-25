@@ -8,26 +8,67 @@ module ad5541_spi ( input clk,
                     output ldac
                    );
 
-reg loaded_data=0;
+//reg loaded_data=0;
 reg sclk_reg=1;
 //reg csn_reg=1;
 reg mosi_reg=1;
 reg [15:0] tx_data_reg=0;
+reg [3:0] clk_cnt=0;
 
+// generate spi clock
 always @ (posedge clk)
 begin
     if (reset)
-    begin
-        tx_data_reg<=0;
+    begin    sclk_reg<=1;
+             clk_cnt<=0;
     end
     else
-    begin   if (dv)
-            begin
-                tx_data_reg<=tx_data;        
-            end
+    begin
+        clk_cnt<=clk_cnt+1;
+        sclk_reg <= clk_cnt[3];
     end
 end
 
+reg tx_data_loaded=0;
+reg tx_done=0;
+always @ (posedge clk)
+begin
+    if (dv)
+    begin
+        tx_data_reg<=tx_data;
+        tx_data_loaded<=1;
+    end
+    if (tx_done)
+    begin
+        tx_data_loaded<=0;
+    end
+end
+
+reg [4:0] bit_count=0;
+
+always @ (negedge sclk_reg)
+begin
+    if (tx_data_loaded)
+    begin
+        csn_reg<=0;
+        bit_count<=bit_count+1;
+        mosi_reg <= tx_data_reg[15-bit_count];
+    end
+    if (bit_count == 16)
+    begin
+        csn_reg<=1;
+        bit_count<=0;
+        tx_done<=1;
+    end
+    else
+        tx_done<=0;
+end    
+
+assign sclk = sclk_reg & (~csn_reg);
+assign mosi = mosi_reg & (~csn_reg);
+        
+endmodule
+/*
 wire ld_data_done;
 reg [15:0] temp_data;
 
@@ -49,16 +90,6 @@ begin
             loaded_temp_data_reg<=1;
         end
     end
-end
-
-reg [4:0] div=0;
-always @ (posedge clk)
-begin
-    if (reset)
-        div<=0;
-    else
-        div<=div+1;
-        sclk_reg<=div[4];
 end
 
 // chip select generation logic
@@ -103,5 +134,4 @@ wire ldac_int;
 re_det re_det1 (.sig(csn_reg),.clk(sclk_reg),.pulse(ldac_int));
 
 assign ldac = ~ldac_int;
-
-endmodule
+*/
