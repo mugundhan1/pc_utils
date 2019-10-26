@@ -26,20 +26,20 @@ module tx_cntrl ( input clk,
                   output dv
                   );
 
-reg [15:0] cntr=0;
+reg [20:0] cntr=0;
 reg dv_reg=0;
-reg spi_rst=0;
+reg spi_rst=1;
 reg [15:0] tx_data_reg;
 
 always @ (posedge clk)
 begin
     cntr<=cntr+1;
     if (cntr == 0)
-        spi_rst<=1;
-    else
         spi_rst<=0;
-    if (cntr == 3000)
-    begin    tx_data_reg<=cntr;
+    else
+        spi_rst<=1;
+    if (cntr == 1937)
+    begin    tx_data_reg<=cntr[15:0];
              dv_reg<=1;
     end
     else

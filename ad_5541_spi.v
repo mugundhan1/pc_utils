@@ -18,7 +18,7 @@ reg [3:0] clk_cnt=0;
 // generate spi clock
 always @ (posedge clk)
 begin
-    if (reset)
+    if (~reset)
     begin    sclk_reg<=1;
              clk_cnt<=0;
     end
@@ -33,14 +33,22 @@ reg tx_data_loaded=0;
 reg tx_done=0;
 always @ (posedge clk)
 begin
-    if (dv)
+    if (~reset)
     begin
-        tx_data_reg<=tx_data;
-        tx_data_loaded<=1;
-    end
-    if (tx_done)
-    begin
+        tx_data_reg<=0;
         tx_data_loaded<=0;
+    end
+    else
+    begin
+        if (dv)
+        begin
+            tx_data_reg<=tx_data;
+            tx_data_loaded<=1;
+        end
+        if (tx_done)
+        begin
+            tx_data_loaded<=0;
+        end
     end
 end
 
@@ -48,24 +56,38 @@ reg [4:0] bit_count=0;
 
 always @ (negedge sclk_reg)
 begin
-    if (tx_data_loaded)
-    begin
-        csn_reg<=0;
-        bit_count<=bit_count+1;
-        mosi_reg <= tx_data_reg[15-bit_count];
-    end
-    if (bit_count == 16)
+    if (~reset)
     begin
         csn_reg<=1;
         bit_count<=0;
-        tx_done<=1;
+        mosi_reg<=0;
     end
     else
-        tx_done<=0;
-end    
+    begin
+        if (tx_data_loaded)
+        begin
+            csn_reg<=0;
+            bit_count<=bit_count+1;
+            mosi_reg <= tx_data_reg[15-bit_count];
+        end
+        if (bit_count == 16)
+        begin
+            csn_reg<=1;
+            bit_count<=0;
+            tx_done<=1;
+        end
+        else
+            tx_done<=0;
+    end    
+end
 
 assign sclk = sclk_reg & (~csn_reg);
 assign mosi = mosi_reg & (~csn_reg);
+
+wire ldac_int;
+
+re_det re_det1(.sig(csn_reg),.clk(sclk_reg),.pulse(ldac_int));
+assign ldac = ~(ldac_int);        
         
 endmodule
 /*
